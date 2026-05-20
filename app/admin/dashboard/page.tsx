@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase, type Skill, type Project, type About, type ContactInfo, type Message } from "@/lib/supabase";
+import UsersSection from "./UsersSection";
 
 /* ── STYLES ── */
 const S = {
@@ -411,6 +412,7 @@ export default function Dashboard() {
     { id: "about", label: "ТУХАЙ" },
     { id: "contact", label: "ХОЛБОО" },
     { id: "messages", label: "МЕССЕЖ", badge: unreadCount },
+    { id: "users", label: "ХЭРЭГЛЭГЧИД" },
   ];
 
   return (
@@ -442,6 +444,7 @@ export default function Dashboard() {
           {tab === "about" && <AboutSection toast={toast} />}
           {tab === "contact" && <ContactSection toast={toast} />}
           {tab === "messages" && <MessagesSection />}
+          {tab === "users" && <UsersSection toast={toast} />}
         </div>
       </div>
 

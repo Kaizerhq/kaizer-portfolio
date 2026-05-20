@@ -32,30 +32,40 @@ export default function AdminAuth() {
         setError("Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой.");
         return;
       }
-    }
-
-    setLoading(true);
-
-    if (mode === "login") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        setError("Имэйл эсвэл нууц үг буруу байна.");
-        setLoading(false);
-      } else {
-        router.push("/admin/dashboard");
-      }
-    } else {
+      setLoading(true);
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) {
         setError(error.message);
-        setLoading(false);
       } else {
-        setSuccess("Бүртгэл амжилттай! Имэйлээ баталгаажуулна уу.");
-        setLoading(false);
-        setEmail("");
-        setPassword("");
-        setConfirmPassword("");
+        setSuccess("Бүртгэл амжилттай! Admin эрх авахын тулд одоогийн admin-аас батлуулна уу.");
+        setEmail(""); setPassword(""); setConfirmPassword("");
       }
+      setLoading(false);
+      return;
+    }
+
+    // LOGIN
+    setLoading(true);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setError("Имэйл эсвэл нууц үг буруу байна.");
+      setLoading(false);
+      return;
+    }
+
+    // Check role
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .single();
+
+    if (profile?.role === "admin") {
+      router.push("/admin/dashboard");
+    } else {
+      await supabase.auth.signOut();
+      setError("Танд admin эрх байхгүй байна. Одоогийн admin-аас эрх хүсэнэ үү.");
+      setLoading(false);
     }
   };
 
@@ -73,33 +83,14 @@ export default function AdminAuth() {
 
   return (
     <div style={{
-      minHeight: "100vh",
-      background: "#06090f",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 24,
-      fontFamily: '"Space Mono", monospace',
-      position: "relative",
+      minHeight: "100vh", background: "#06090f", display: "flex",
+      alignItems: "center", justifyContent: "center", padding: 24,
+      fontFamily: '"Space Mono", monospace', position: "relative",
     }}>
-      {/* BG GRID */}
-      <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-        backgroundImage: "linear-gradient(rgba(126,184,247,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(126,184,247,0.03) 1px, transparent 1px)",
-        backgroundSize: "80px 80px",
-        pointerEvents: "none",
-      }} />
-
-      {/* ICE GLOW */}
-      <div style={{
-        position: "fixed", top: "-20%", left: "50%", transform: "translateX(-50%)",
-        width: 600, height: 400,
-        background: "radial-gradient(ellipse at center, rgba(126,184,247,0.06) 0%, transparent 70%)",
-        pointerEvents: "none",
-      }} />
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "linear-gradient(rgba(126,184,247,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(126,184,247,0.03) 1px, transparent 1px)", backgroundSize: "80px 80px", pointerEvents: "none" }} />
+      <div style={{ position: "fixed", top: "-20%", left: "50%", transform: "translateX(-50%)", width: 600, height: 400, background: "radial-gradient(ellipse at center, rgba(126,184,247,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
 
       <div style={{ width: "100%", maxWidth: 420, position: "relative" }}>
-        {/* LOGO */}
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <a href="/" style={{ textDecoration: "none" }}>
             <span style={{ fontFamily: '"DM Serif Display", Georgia, serif', fontSize: 48, color: "#ddeeff" }}>
@@ -109,24 +100,31 @@ export default function AdminAuth() {
           <p style={{ fontSize: 10, letterSpacing: 4, color: "rgba(126,184,247,0.5)", marginTop: 8 }}>ADMIN PANEL</p>
         </div>
 
-        {/* TAB SWITCHER */}
         <div style={{ display: "flex", marginBottom: 32, border: "1px solid rgba(126,184,247,0.12)" }}>
           {(["login", "register"] as const).map((m) => (
             <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }}
               style={{
-                flex: 1, padding: "12px", background: mode === m ? "rgba(126,184,247,0.1)" : "transparent",
+                flex: 1, padding: "12px",
+                background: mode === m ? "rgba(126,184,247,0.1)" : "transparent",
                 border: "none", borderBottom: mode === m ? "2px solid #7eb8f7" : "2px solid transparent",
                 color: mode === m ? "#7eb8f7" : "rgba(221,238,255,0.35)",
-                fontFamily: '"Space Mono", monospace', fontSize: 10, letterSpacing: 3, cursor: "crosshair",
-                transition: "all 0.2s",
+                fontFamily: '"Space Mono", monospace', fontSize: 10, letterSpacing: 3,
+                cursor: "crosshair", transition: "all 0.2s",
               }}>
               {m === "login" ? "НЭВТРЭХ" : "БҮРТГҮҮЛЭХ"}
             </button>
           ))}
         </div>
 
-        {/* FORM BOX */}
         <div style={{ border: "1px solid rgba(126,184,247,0.12)", padding: 40, background: "rgba(126,184,247,0.02)" }}>
+          {mode === "register" && (
+            <div style={{ marginBottom: 24, padding: "12px 16px", background: "rgba(126,184,247,0.05)", borderLeft: "2px solid rgba(126,184,247,0.3)" }}>
+              <p style={{ fontSize: 10, color: "rgba(221,238,255,0.5)", lineHeight: 1.8, letterSpacing: 1 }}>
+                Бүртгүүлсний дараа та хэвийн хэрэглэгч байна. Admin эрх авахын тулд одоогийн admin-аас батлуулна уу.
+              </p>
+            </div>
+          )}
+
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             <div>
               <label style={{ fontSize: 9, letterSpacing: 3, color: "#7eb8f7", display: "block", marginBottom: 8 }}>ИМЭЙЛ</label>
@@ -157,21 +155,14 @@ export default function AdminAuth() {
               </div>
             )}
 
-            {error && (
-              <p style={{ fontSize: 11, color: "#ff6b6b", letterSpacing: 1, lineHeight: 1.6 }}>{error}</p>
-            )}
-
-            {success && (
-              <p style={{ fontSize: 11, color: "#7eb8f7", letterSpacing: 1, lineHeight: 1.6 }}>{success}</p>
-            )}
+            {error && <p style={{ fontSize: 11, color: "#ff6b6b", letterSpacing: 1, lineHeight: 1.6 }}>{error}</p>}
+            {success && <p style={{ fontSize: 11, color: "#7eb8f7", letterSpacing: 1, lineHeight: 1.6 }}>{success}</p>}
 
             <button onClick={handleSubmit} disabled={loading}
               style={{
-                padding: "14px", background: "#7eb8f7", color: "#06090f",
-                border: "none", fontFamily: '"Space Mono", monospace',
-                fontSize: 11, letterSpacing: 3, fontWeight: 700,
-                cursor: loading ? "wait" : "crosshair",
-                transition: "all 0.2s", opacity: loading ? 0.7 : 1,
+                padding: "14px", background: "#7eb8f7", color: "#06090f", border: "none",
+                fontFamily: '"Space Mono", monospace', fontSize: 11, letterSpacing: 3, fontWeight: 700,
+                cursor: loading ? "wait" : "crosshair", transition: "all 0.2s", opacity: loading ? 0.7 : 1,
               }}
               onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = "#4a8fd4"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "#7eb8f7"; }}>
