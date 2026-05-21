@@ -20,15 +20,31 @@ function useInView(ref: React.RefObject<Element | null>, threshold = 0.15) {
 }
 
 /* ── NAVBAR ── */
+
 function Navbar({ active }: { active: string }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
+
+    // Check auth state
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+
+    return () => { window.removeEventListener("scroll", onScroll); subscription.unsubscribe(); };
   }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUserEmail(null);
+  };
 
   const links = [
     { href: "#about", label: "ТУХАЙ" },
@@ -52,6 +68,7 @@ function Navbar({ active }: { active: string }) {
             K<span style={{ color: "var(--amber)" }}>.</span>
           </span>
         </a>
+
         <div id="desktop-nav" style={{ display: "flex", gap: 32, alignItems: "center" }}>
           {links.map((l) => (
             <a key={l.href} href={l.href} className="nav-link" style={{
@@ -60,32 +77,57 @@ function Navbar({ active }: { active: string }) {
               textDecoration: "none", transition: "color 0.2s", fontFamily: "var(--font-mono)",
             }}>{l.label}</a>
           ))}
-          <a href="/admin" style={{
-            fontSize: 10, letterSpacing: 2, padding: "6px 14px",
-            border: "1px solid rgba(126,184,247,0.2)", color: "rgba(126,184,247,0.5)",
-            textDecoration: "none", fontFamily: "var(--font-mono)", transition: "all 0.2s",
-          }}
-            onMouseEnter={(e) => { const el = e.currentTarget; el.style.borderColor = "var(--amber)"; el.style.color = "var(--amber)"; }}
-            onMouseLeave={(e) => { const el = e.currentTarget; el.style.borderColor = "rgba(126,184,247,0.2)"; el.style.color = "rgba(126,184,247,0.5)"; }}
-          >ADMIN</a>
+
+          {userEmail ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 10, color: "var(--amber)", fontFamily: "var(--font-mono)", letterSpacing: 1, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {userEmail}
+              </span>
+              <button onClick={handleLogout} style={{ fontSize: 10, letterSpacing: 2, padding: "6px 12px", border: "1px solid rgba(126,184,247,0.2)", color: "rgba(221,238,255,0.4)", background: "transparent", fontFamily: "var(--font-mono)", cursor: "crosshair", transition: "all 0.2s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#ff6b6b"; e.currentTarget.style.color = "#ff6b6b"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(126,184,247,0.2)"; e.currentTarget.style.color = "rgba(221,238,255,0.4)"; }}>
+                ГАРАХ
+              </button>
+            </div>
+          ) : (
+            <a href="/admin" style={{
+              fontSize: 10, letterSpacing: 2, padding: "6px 14px",
+              border: "1px solid rgba(126,184,247,0.2)", color: "rgba(126,184,247,0.5)",
+              textDecoration: "none", fontFamily: "var(--font-mono)", transition: "all 0.2s",
+            }}
+              onMouseEnter={(e) => { const el = e.currentTarget; el.style.borderColor = "var(--amber)"; el.style.color = "var(--amber)"; }}
+              onMouseLeave={(e) => { const el = e.currentTarget; el.style.borderColor = "rgba(126,184,247,0.2)"; el.style.color = "rgba(126,184,247,0.5)"; }}>
+              НЭВТРЭХ
+            </a>
+          )}
         </div>
+
         <button id="hamburger" onClick={() => setMenuOpen(!menuOpen)}
           style={{ background: "none", border: "none", cursor: "crosshair", display: "none", flexDirection: "column", padding: 4 }}
           aria-label="menu">
-          {[0,1,2].map((i) => (
+          {[0, 1, 2].map((i) => (
             <div key={i} style={{ width: 22, height: 2, background: menuOpen ? "var(--amber)" : "var(--paper)", marginBottom: i < 2 ? 5 : 0, opacity: i === 1 && menuOpen ? 0 : 1, transition: "all 0.3s" }} />
           ))}
         </button>
       </div>
+
       {menuOpen && (
         <div style={{ background: "var(--ink)", borderTop: "1px solid rgba(126,184,247,0.1)", padding: "24px clamp(16px,5vw,64px)", display: "flex", flexDirection: "column", gap: 20 }}>
           {links.map((l) => (
             <a key={l.href} href={l.href} onClick={() => setMenuOpen(false)}
               style={{ fontSize: 13, letterSpacing: 3, color: "rgba(221,238,255,0.7)", textDecoration: "none" }}>{l.label}</a>
           ))}
-          <a href="/admin" style={{ fontSize: 11, letterSpacing: 2, color: "rgba(126,184,247,0.6)", textDecoration: "none" }}>ADMIN</a>
+          {userEmail ? (
+            <>
+              <span style={{ fontSize: 11, color: "var(--amber)", fontFamily: "var(--font-mono)" }}>{userEmail}</span>
+              <button onClick={handleLogout} style={{ background: "none", border: "none", color: "#ff6b6b", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: 2, cursor: "crosshair", textAlign: "left", padding: 0 }}>ГАРАХ</button>
+            </>
+          ) : (
+            <a href="/admin" style={{ fontSize: 11, letterSpacing: 2, color: "rgba(126,184,247,0.6)", textDecoration: "none" }}>НЭВТРЭХ</a>
+          )}
         </div>
       )}
+
       <style>{`
         @media (max-width: 640px) {
           #desktop-nav { display: none !important; }
